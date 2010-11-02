@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import dbus
+import functools
 bus = dbus.SystemBus()
 
 class DbusInt(object):
@@ -8,6 +9,14 @@ class DbusInt(object):
             name = self.__class__.__name__
         self.dbus = dbus.Interface(bus.get_object("org.moblin.connman", path),
                         "org.moblin.connman.%s" % name)
+        if hasattr(self, '_exposed_properties'):
+            for prop in self._exposed_properties:
+                def mysetter(name, s, value):
+                    s.dbus.SetProperty(name, value)
+                def mygetter(name, s):
+                    return s.properties[name]
+                myprop = property(fget=functools.partial(mygetter, prop), fset=functools.partial(mysetter, prop))
+                setattr(self.__class__, prop.lower(), myprop)
     
     properties = property(lambda s: s.dbus.GetProperties())
     
@@ -21,47 +30,38 @@ class DbusInt(object):
         return "<%s %s object at %s>" % (self.__class__.__name__, self, hex(id(self)))
 
 class Service(DbusInt):
-    
-    def set_password(self, password):
-        self.dbus.SetProperty("Passphrase", password)
+    _exposed_properties = ('Passphrase', 'AutoConnect')
     
     def connect(self, timeout=60000):
         self.dbus.Connect(timeout=timeout)
     
     def disconnect(self):
         self.dbus.Disconnect()
-    
-    def _set_autoconnect(self, value):
-        self.dbus.SetProperty("AutoConnect", value)
-    
-    autoconnect = property(fget=lambda s: s.properties['AutoConnect'], 
-                        fset=_set_autoconnect)
 
 class Technology(DbusInt):
     def __init__(self, path, manager):
         self.manager = manager
         super(Technology, self).__init__(path) 
+        self.type = self.properties['Type']
     
     def _set_enabled(self, value):
-        t_type = self.properties['Type']
         if value:
-            self.manager.dbus.EnableTechnology(t_type)
+            self.manager.dbus.EnableTechnology(self.type)
         else:
-            self.manager.dbus.DisableTechnology(t_type)
-        
+            self.manager.dbus.DisableTechnology(self.type)
+    
+    def scan(self):
+        self.manager.dbus.RequestScan(self.type)
+    
     devices = property(fget=lambda s: [ Device(path) for path in s.properties['Devices'] ] )
     enabled = property(fget=lambda s: s.properties['State'] == 'enabled', 
                     fset=_set_enabled)
 
 class Device(DbusInt):
-    
-    def _set_powered(self, value):
-        self.dbus.SetProperty("Powered", value)
-    
-    powered = property(fget=lambda s: s.properties['Powered'], fset=_set_powered)
-        
+    _exposed_properties = ("Powered", )
 
 class Manager(DbusInt):
+    _exposed_properties = ('State',)
     def __init__(self):
         super(Manager, self).__init__("/")
     
