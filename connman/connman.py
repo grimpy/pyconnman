@@ -14,7 +14,7 @@ class DbusInt(object):
                 def mysetter(name, s, value):
                     s.dbus.SetProperty(name, value)
                 def mygetter(name, s):
-                    return s.properties[name]
+                    return s.properties.get(name)
                 myprop = property(fget=functools.partial(mygetter, prop), fset=functools.partial(mysetter, prop))
                 setattr(self.__class__, prop.lower(), myprop)
     
