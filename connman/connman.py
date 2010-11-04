@@ -22,15 +22,16 @@ class DbusInt(object):
     
     def __str__(self):
         name = self.properties.get("Name", "")
+        type = self.properties.get("Type", "")
         if name:
-            return name
+            return "%s %s" % (name, type)
         return "<%s object at %s>" % (self.__class__.__name__, hex(id(self)))
 
     def __repr__(self):
         return "<%s %s object at %s>" % (self.__class__.__name__, self, hex(id(self)))
 
 class Service(DbusInt):
-    _exposed_properties = ('Passphrase', 'AutoConnect')
+    _exposed_properties = ('Passphrase', 'AutoConnect', 'Type')
     
     def connect(self, timeout=60000):
         self.dbus.Connect(timeout=timeout)
