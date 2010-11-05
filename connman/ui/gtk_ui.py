@@ -6,6 +6,7 @@ import logging
 
 class GtkUi(object):
         def __init__(self):
+            gtk.gdk.threads_init()
             self.default_service = None
             self.mainloop = gobject.MainLoop()
             self.connman = dbuswrapper.Manager()
@@ -23,9 +24,11 @@ class GtkUi(object):
                 icon = icons.get_icon_by_strenght(propertyvalue)
                 self.status_icon.set_from_file(icon)
 
-        def check_status_icon(self):
+        def check_status_icon(self, service=None):
             icon = icons.TYPE_UNKOWN
-            service = self.connman.get_default_service()
+            tooltip = "Not connected"
+            if not service:
+                service = self.connman.get_default_service()
             if not service:
                 icon = icons.TYPE_NONE
                 type_ = None
@@ -37,10 +40,24 @@ class GtkUi(object):
                 icon = icons.get_icon_by_strenght(strenght)
             elif type_ == "ethernet":
                 icon = icons.TYPE_WIRED
+            if icon != icons.TYPE_NONE:
+                self.spinner_connect.stop()
+            if service:
+                ipinfo = service.properties['IPv4']
+                tooltip = "Connected to %s\nAddress %s/%s\nGateway %s" % (service, ipinfo['Address'], ipinfo['Netmask'], ipinfo['Gateway'])
+            self.status_icon.set_tooltip(tooltip)
             self.status_icon.set_from_file(icon)
 
-        def build_right_menu(self, icon, button ,timeout):
+        def service_connect(self, group_item, service):
+            group_item.set_active(True)
+            if service.state != "online":
+                self.spinner_connect.start()
+                try:
+                    service.connect(0)
+                except:
+                    pass
 
+        def build_right_menu(self, icon, button ,timeout):
             menu = self.builder.get_object('tray_menu')
             for child in menu.get_children()[::-1]:
                 menu.remove(child)
@@ -57,14 +74,60 @@ class GtkUi(object):
                 lastitem = None
                 for service in services:
                     item = gtk.RadioMenuItem(lastitem, "%s %s" % (service.name, service.type))
+                    if service.state == "online":
+                        item.set_active(True)
+                    item.connect("toggled", self.service_connect, service)
                     item.show()
                     lastitme = item
                     menu.append(item)
                 sep = gtk.SeparatorMenuItem()
                 sep.show()
                 menu.append(sep)
+            self.append_technology_menu(menu)
+            self.append_default_menu(menu)
+            menu.show()
             menu.popup(None, None, None, button, timeout)
 
+        def scan(self, menuitem):
+            self.connman.scan()
+
+        def toggle_technology(self, menuitem, technology):
+            technology.enabled = not technology.enabled
+
+        def append_technology_menu(self, menu):
+            mainitem = gtk.ImageMenuItem(gtk.STOCK_NETWORK)
+            mainitem.set_label("Technologies")
+            mainitem.show()
+            technologymenu = gtk.Menu()
+            technologymenu.show()
+            for technology in self.connman.technologies:
+                techitem = gtk.CheckMenuItem(str(technology))
+                techitem.set_active(technology.enabled)
+                techitem.connect("toggled", self.toggle_technology, technology)
+                techitem.show()
+                technologymenu.append(techitem)
+
+            mainitem.set_submenu(technologymenu)
+            menu.append(mainitem)
+
+        def append_default_menu(self, menu):
+            scan = gtk.ImageMenuItem(gtk.STOCK_REFRESH)
+            scan.set_label("Scan")
+            scan.connect("activate", self.scan)
+            scan.show()
+            menu.append(scan)
+            pref = gtk.ImageMenuItem(gtk.STOCK_PREFERENCES)
+            pref.connect("activate", self.quit)
+            #pref.show()
+            menu.append(pref)
+            quit_item = gtk.ImageMenuItem(gtk.STOCK_QUIT)
+            quit_item.connect("activate", self.quit)
+            quit_item.show()
+            menu.append(quit_item)
+
+
+        def quit(self, *args, **kwargs):
+            self.mainloop.quit()
 
         def start(self):
             self.mainloop.run()

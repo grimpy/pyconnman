@@ -1,9 +1,18 @@
 #!/usr/bin/env python
 import logging
+import optparse
 from connman.ui import gtk_ui
 
 if __name__ == '__main__':
-    loglevel = logging.DEBUG
+    options = optparse.OptionParser()
+    options.add_option("-v", "--verbose", dest="verbose", default=False, action="store_true", help="Verbose logging")
+    options.add_option("-d", "--debug", dest="debug", default=False, action="store_true", help="Debug logging")
+    opt, args = options.parse_args()
+    loglevel = logging.WARNING
+    if opt.verbose:
+        loglevel = logging.INFO
+    if opt.debug:
+        loglevel = logging.DEBUG
     logging.basicConfig(level=loglevel,format='%(asctime)s %(levelname)s %(message)s')
     ui = gtk_ui.GtkUi()
     ui.start()

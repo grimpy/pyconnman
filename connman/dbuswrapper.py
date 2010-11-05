@@ -6,10 +6,23 @@ DBusGMainLoop(set_as_default=True)
 
 class DbusInt(object):
     bus = dbus.SystemBus()
+    __instances = dict()
+    _str_props = ("Name", "Type")
 
-    def __init__(self, path, name=None):
-        if not name:
-            name = self.__class__.__name__
+    @classmethod
+    def load(cls, path=None, *args, **kwargs):
+        key = cls.__name__, path
+        if key not in cls.__instances:
+            if path:
+                inst = cls(path, *args, **kwargs)
+            else:
+                inst = cls(*args, **kwargs)
+            cls.__instances[key] = inst
+        return cls.__instances[key]
+
+
+    def __init__(self, path):
+        name = self.__class__.__name__
         self.dbus = dbus.Interface(self.bus.get_object("org.moblin.connman", path),
                         "org.moblin.connman.%s" % name)
         if hasattr(self, '_exposed_properties'):
@@ -33,17 +46,21 @@ class DbusInt(object):
     properties = property(lambda s: s.dbus.GetProperties())
 
     def __str__(self):
-        name = self.properties.get("Name", "")
-        type_ = self.properties.get("Type", "")
+        nameparts = list()
+        for namepart in self._str_props:
+            part = self.properties.get(namepart)
+            if part:
+                nameparts.append(part)
+        name = " ".join(nameparts)
         if name:
-            return "%s %s" % (name, type_)
+            return name
         return "<%s object at %s>" % (self.__class__.__name__, hex(id(self)))
 
     def __repr__(self):
         return "<%s %s object at %s>" % (self.__class__.__name__, self, hex(id(self)))
 
 class Service(DbusInt):
-    _exposed_properties = ('Passphrase', 'AutoConnect', 'Type', 'Name')
+    _exposed_properties = ('Passphrase', 'AutoConnect', 'Type', 'Name', 'State')
     ip4config = "IPv4.Configuration"
     dnsconfig = "Nameservers.Configuration"
 
@@ -65,12 +82,14 @@ class Service(DbusInt):
         self.dbus.SetProperty(self.ip4config, {"Method": "dhcp"})
 
 class Technology(DbusInt):
+    _str_props = ("Name", )
+
     def __init__(self, path, manager):
         self.manager = manager
         super(Technology, self).__init__(path)
         self.type = self.properties['Type']
 
-    def _set_enabled(self, value):
+    def __set_enabled(self, value):
         if value:
             self.manager.dbus.EnableTechnology(self.type)
         else:
@@ -79,15 +98,16 @@ class Technology(DbusInt):
     def scan(self):
         self.manager.dbus.RequestScan(self.type)
 
-    devices = property(fget=lambda s: [ Device(path) for path in s.properties['Devices'] ] )
+    devices = property(fget=lambda s: [ Device.load(path) for path in s.properties['Devices'] ] )
     enabled = property(fget=lambda s: s.properties['State'] == 'enabled',
-                    fset=_set_enabled)
+                    fset=__set_enabled)
 
 class Device(DbusInt):
     _exposed_properties = ("Powered", )
 
 class Manager(DbusInt):
     _exposed_properties = ('State',)
+
     def __init__(self):
         super(Manager, self).__init__("/")
 
@@ -101,11 +121,6 @@ class Manager(DbusInt):
     def scan(self, type_=""):
         self.dbus.RequestScan(type_)
 
-    def _get_services(self):
-        services = list()
-        for service in self.properties['Services']:
-            services.append(Service(service))
-        return services
 
     def get_default_service(self):
         defaulttechtype = self.properties['DefaultTechnology']
@@ -125,15 +140,8 @@ class Manager(DbusInt):
             services[type_] = servicepertype
         return services
 
-    def _get_technologies(self):
-        technologies = list()
-        for technology in self.properties['Technologies']:
-            technologies.append(Technology(technology, self))
-        return technologies
-
-
-    services = property(fget=_get_services)
-    technologies = property(fget=_get_technologies)
+    services = property(fget=lambda s: [ Service.load(serv) for serv in s.properties['Services']])
+    technologies = property(fget=lambda s: [ Technology.load(tech,s) for tech in s.properties['Technologies']])
 
 if __name__ == '__main__':
-    con = Manager()
+    con = Manager.load()
