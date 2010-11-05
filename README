@@ -1,0 +1,5 @@
+Python client/library for connman
+
+Includes wrappers for connman dbus interface
+
+GTK+ client for connman written in pygtk
