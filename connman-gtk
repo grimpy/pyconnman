@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+import logging
+from connman.ui import gtk_ui
+
+if __name__ == '__main__':
+    loglevel = logging.DEBUG
+    logging.basicConfig(level=loglevel,format='%(asctime)s %(levelname)s %(message)s')
+    ui = gtk_ui.GtkUi()
+    ui.start()
