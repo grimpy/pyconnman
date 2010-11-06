@@ -9,7 +9,7 @@ setup(name='pyconnman',
       author='Jo De Boeck',
       author_email='deboeck.jo@gmail.com',
       url='http://github.com/grimpy/pyconnman',
-      packages=['connman', ] ,
+      packages=['connman', 'connman/ui'] ,
       scripts=['connman-gtk'],
       data_files=[('share/pixmaps/connman', glob.glob('icons/*.png')),
                   ('share/connman/ui/', glob.glob('connman/ui/*.xml'))]
