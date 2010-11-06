@@ -1,7 +1,7 @@
 import gtk
 import gobject
 from connman import dbuswrapper
-from connman.ui import icons
+from connman.ui import icons, pref
 import logging
 
 class GtkUi(object):
@@ -16,6 +16,7 @@ class GtkUi(object):
             self.check_status_icon()
             self.builder = gtk.Builder()
             self.builder.add_from_file("connman/ui/connman.xml")
+            self.pref = pref.Preferences(self)
             self.attach_signals()
 
         def service_update(self, propertyname, propertyvalue):
@@ -50,6 +51,9 @@ class GtkUi(object):
 
         def service_connect(self, group_item, service):
             group_item.set_active(True)
+            self.connect_service(service)
+
+        def connect_service(self, service):
             if service.state != "online":
                 self.spinner_connect.start()
                 try:
@@ -117,8 +121,9 @@ class GtkUi(object):
             scan.show()
             menu.append(scan)
             pref = gtk.ImageMenuItem(gtk.STOCK_PREFERENCES)
-            pref.connect("activate", self.quit)
-            #pref.show()
+            pref.set_label("Configure")
+            pref.connect("activate", self.pref.show)
+            pref.show()
             menu.append(pref)
             quit_item = gtk.ImageMenuItem(gtk.STOCK_QUIT)
             quit_item.connect("activate", self.quit)
