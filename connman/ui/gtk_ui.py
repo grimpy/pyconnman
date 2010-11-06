@@ -3,11 +3,13 @@ import gobject
 from connman import dbuswrapper
 from connman.ui import icons, pref
 import logging
+import pynotify
 
 class GtkUi(object):
         def __init__(self):
-            gtk.gdk.threads_init()
             self.default_service = None
+            pynotify.init("Connman")
+            self.notify = pynotify.Notification("Connman")
             self.mainloop = gobject.MainLoop()
             self.connman = dbuswrapper.Manager()
             self.status_icon = gtk.StatusIcon()
@@ -17,13 +19,24 @@ class GtkUi(object):
             self.builder = gtk.Builder()
             self.builder.add_from_file("connman/ui/connman.xml")
             self.pref = pref.Preferences(self)
+            self.password_messagebox = self.builder.get_object("msgPassword")
             self.attach_signals()
 
-        def service_update(self, propertyname, propertyvalue):
+        def service_update(self, service, propertyname, propertyvalue):
             logging.info("Service property update of %s with value %s", propertyname, propertyvalue)
             if propertyname == "Strength":
                 icon = icons.get_icon_by_strenght(propertyvalue)
                 self.status_icon.set_from_file(icon)
+            elif propertyname == "State":
+                self.notify.update("Connman", "Sevice %s is now %s" % (service.name, propertyvalue))
+                self.notify.show()
+
+        def service_password_entered(self, dialog, response, service):
+            if response == gtk.RESPONSE_OK:
+                service.passphrase = self.builder.get_object("txtPass").props.text
+                self.connect_service(service)
+            dialog.hide()
+
 
         def check_status_icon(self, service=None):
             icon = icons.TYPE_UNKOWN
@@ -54,11 +67,19 @@ class GtkUi(object):
             self.connect_service(service)
 
         def connect_service(self, service):
-            if service.state != "online":
+            state = service.state
+            if state not in ("online", "ready"):
                 self.spinner_connect.start()
                 try:
-                    service.connect(0)
+                    if service.properties['PassphraseRequired'] or state == "failure" and service.type == "wifi":
+                        self.password_messagebox.props.text = "Provide password for wireless network %s" % service.name
+                        self.builder.get_object("txtPass").props.text = ""
+                        self.password_messagebox.connect("response", self.service_password_entered, service)
+                        self.password_messagebox.show()
+                        return
+                    service.connect(1)
                 except:
+                    raise
                     pass
 
         def build_right_menu(self, icon, button ,timeout):
@@ -78,7 +99,7 @@ class GtkUi(object):
                 lastitem = None
                 for service in services:
                     item = gtk.RadioMenuItem(lastitem, "%s %s" % (service.name, service.type))
-                    if service.state == "online":
+                    if service.state in ("online", "ready"):
                         item.set_active(True)
                     item.connect("toggled", self.service_connect, service)
                     item.show()
@@ -130,16 +151,13 @@ class GtkUi(object):
             quit_item.show()
             menu.append(quit_item)
 
-
         def quit(self, *args, **kwargs):
             self.mainloop.quit()
 
         def start(self):
             self.mainloop.run()
 
-
-        def manager_changed(self, propertyname, propertyvalue):
-            logging.info("Manager property update of %s with value %s", propertyname, propertyvalue)
+        def manager_changed(self, manager, propertyname, propertyvalue):
             if propertyname == "DefaultTechnology":
                 self.check_status_icon()
             self.verify_default_service()
@@ -151,8 +169,7 @@ class GtkUi(object):
                     default_service.register_propertychange_callback(self.service_update)
                 self.default_service = default_service
 
-        def device_changed(self, propertyname, propertyvalue):
-            logging.info("Device property update of %s with value %s", propertyname, propertyvalue)
+        def device_changed(self, device, propertyname, propertyvalue):
             if propertyname == "Scanning":
                 if propertyvalue:
                     self.spnner_scanning.start()

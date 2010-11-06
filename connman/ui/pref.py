@@ -38,13 +38,13 @@ class Preferences(object):
 
     def connect(self, button):
         service = self.get_selected_service()
-        if service and service.state != "online":
+        if service and service.state not in ("online", "ready"):
             self.main.connect_service(service)
             self.configure_buttons(True)
 
     def disconnect(self, button):
         service = self.get_selected_service()
-        if service and service.state == "online":
+        if service and service.state in ("online", "ready"):
             service.disconnect(False)
             self.configure_buttons()
 
@@ -55,7 +55,7 @@ class Preferences(object):
     def service_selected(self, treeview):
         service = self.get_selected_service()
         if service:
-            online = service.state == "online"
+            online = service.state in ("online", "ready")
             self.configure_buttons(online)
 
     def attach_signals(self):

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import dbus
 import functools
+import logging
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
@@ -20,9 +21,10 @@ class DbusInt(object):
             cls.__instances[key] = inst
         return cls.__instances[key]
 
-
     def __init__(self, path):
         name = self.__class__.__name__
+        self.__callback_registered = False
+        self.__callbacks = list()
         self.dbus = dbus.Interface(self.bus.get_object("org.moblin.connman", path),
                         "org.moblin.connman.%s" % name)
         if hasattr(self, '_exposed_properties'):
@@ -34,8 +36,20 @@ class DbusInt(object):
                 myprop = property(fget=functools.partial(mygetter, prop), fset=functools.partial(mysetter, prop))
                 setattr(self.__class__, prop.lower(), myprop)
 
+    def __callback_handler(self, propertyname, propertyvalue):
+        logging.info("%s property update of %s with value %s", self.__class__.__name__, propertyname, propertyvalue)
+        for callback in self.__callbacks:
+            callback(self, propertyname, propertyvalue)
+
     def register_propertychange_callback(self, callback):
-        self.dbus.connect_to_signal("PropertyChanged", callback)
+        if not self.__callback_registered:
+            self.dbus.connect_to_signal("PropertyChanged", self.__callback_handler)
+        self.__callback_registered = True
+        self.__callbacks.append(callback)
+
+    def unregister_propertychange_callback(self, callback):
+        if callback in self.__callbacks:
+            self.__callbacks.delete(callback)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):
@@ -128,7 +142,7 @@ class Manager(DbusInt):
         if not services:
             return
         for service in services:
-            if service.properties['State'] == "online":
+            if service.properties['State'] in ("online", "ready"):
                 return service
 
     def get_services_by_type(self):
