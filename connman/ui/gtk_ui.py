@@ -2,6 +2,7 @@ import gtk
 import gobject
 from connman import dbuswrapper
 from connman.ui import icons, pref
+from connman import paths
 import logging
 import pynotify
 
@@ -17,7 +18,7 @@ class GtkUi(object):
             self.spnner_scanning = icons.Spinner(self.status_icon, icons.SPINNER_SCANNING)
             self.check_status_icon()
             self.builder = gtk.Builder()
-            self.builder.add_from_file("connman/ui/connman.xml")
+            self.builder.add_from_file(paths.XML)
             self.pref = pref.Preferences(self)
             self.password_messagebox = self.builder.get_object("msgPassword")
             self.attach_signals()

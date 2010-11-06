@@ -20,7 +20,7 @@
       <!-- column-name state -->
       <column type="gchararray"/>
       <!-- column-name service -->
-      <column/>
+      <column type="PyObject"/>
     </columns>
   </object>
   <object class="GtkWindow" id="wnd_pref">

@@ -1,8 +1,10 @@
 import os
 import gobject
 import time
+from connman import paths
 
-basepath = "icons/"
+basepath = paths.PIXMAPS
+print basepath
 TYPE_NONE = os.path.join(basepath, "connman-type-none.png")
 TYPE_WIRED = os.path.join(basepath, "connman-type-wired.png")
 TYPE_WIRELESS = os.path.join(basepath, "connman-signal-05.png")
