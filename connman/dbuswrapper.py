@@ -84,6 +84,9 @@ class Service(DbusInt):
     def disconnect(self):
         self.dbus.Disconnect()
 
+    def remove(self):
+        self.dbus.Remove()
+
     def set_ipaddress(self, address, netmask, gateway, nameservers):
         ip = {'Method': 'manual', 'Address': address, 'Netmask': netmask}
         if gateway:

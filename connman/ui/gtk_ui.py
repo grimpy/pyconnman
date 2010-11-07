@@ -72,16 +72,15 @@ class GtkUi(object):
             if state not in ("online", "ready"):
                 self.spinner_connect.start()
                 try:
-                    if service.properties['PassphraseRequired'] or state == "failure" and service.type == "wifi":
+                    if service.properties.get('PassphraseRequired', False) or state == "failure" and service.type == "wifi":
                         self.password_messagebox.props.text = "Provide password for wireless network %s" % service.name
                         self.builder.get_object("txtPass").props.text = ""
                         self.password_messagebox.connect("response", self.service_password_entered, service)
                         self.password_messagebox.show()
                         return
-                    service.connect(1)
-                except:
-                    raise
-                    pass
+                    service.connect()
+                except Exception, e:
+                    return e
 
         def build_right_menu(self, icon, button ,timeout):
             menu = self.builder.get_object('tray_menu')
