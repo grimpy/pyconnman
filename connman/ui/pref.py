@@ -1,4 +1,5 @@
 import gtk
+from connman.ui import edit_service
 
 class Preferences(object):
     def __init__(self, main):
@@ -7,7 +8,6 @@ class Preferences(object):
         self.connman = main.connman
         self.builder = main.builder
         self.servicelist = self.builder.get_object("servicelist")
-        self.servicelist
 
 
     def show(self, menuitem):
@@ -57,6 +57,10 @@ class Preferences(object):
         if service:
             online = service.state in ("online", "ready")
             self.configure_buttons(online)
+    
+    def edit_service(self, button):
+        service = self.get_selected_service()
+        edit_service.ServiceEditor(self.builder, service)
 
     def attach_signals(self):
         self.window.connect("delete-event", lambda a,b: a.hide() or True)
@@ -64,6 +68,6 @@ class Preferences(object):
         self.builder.get_object("btn_connect").connect("clicked", self.connect)
         self.builder.get_object("btn_disconnect").connect("clicked", self.disconnect)
         self.builder.get_object("btn_add").connect("clicked", self.close)
-        self.builder.get_object("btn_edit").connect("clicked", self.close)
+        self.builder.get_object("btn_edit").connect("clicked", self.edit_service)
         self.builder.get_object("btn_refresh").connect("clicked", self.refresh)
         self.builder.get_object("Servicetree").connect("cursor-changed", self.service_selected)
