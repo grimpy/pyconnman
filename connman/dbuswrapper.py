@@ -49,7 +49,7 @@ class DbusInt(object):
 
     def unregister_propertychange_callback(self, callback):
         if callback in self.__callbacks:
-            self.__callbacks.delete(callback)
+            self.__callbacks.remove(callback)
 
     def __eq__(self, other):
         if isinstance(other, self.__class__):

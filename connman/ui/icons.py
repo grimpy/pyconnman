@@ -22,16 +22,20 @@ class Spinner(object):
         self.status_icon = status_icon
         self.images = images
         self.idx = 0
-        self.running = False
+        self.running = 0
         self.len = len(images)
 
     def start(self):
-        if self.running == False:
+        self.running +=1
+        if self.running == 1:
             self.running = True
             gobject.timeout_add(200, self.run)
 
     def stop(self):
-        self.running = False
+        self.running -= 1
+    
+    def reset(self):
+        self.running = 0
 
     def run(self):
         if not self.running:

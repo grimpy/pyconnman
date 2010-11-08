@@ -15,7 +15,7 @@ class GtkUi(object):
             self.connman = dbuswrapper.Manager()
             self.status_icon = gtk.StatusIcon()
             self.spinner_connect = icons.Spinner(self.status_icon, icons.SPINNER_CONNECTING)
-            self.spnner_scanning = icons.Spinner(self.status_icon, icons.SPINNER_SCANNING)
+            self.spinner_scanning = icons.Spinner(self.status_icon, icons.SPINNER_SCANNING)
             self.check_status_icon()
             self.builder = gtk.Builder()
             self.builder.add_from_file(paths.XML)
@@ -114,6 +114,8 @@ class GtkUi(object):
             menu.popup(None, None, None, button, timeout)
 
         def scan(self, menuitem):
+            for dev in self.connman.get_devices():
+                dev.register_propertychange_callback(self.device_changed)
             self.connman.scan()
 
         def toggle_technology(self, menuitem, technology):
@@ -167,19 +169,20 @@ class GtkUi(object):
             if self.default_service != default_service:
                 if default_service:
                     default_service.register_propertychange_callback(self.service_update)
+                if self.default_service:
+                    self.default_service.unregister_propertychange_callback(self.service_update)
                 self.default_service = default_service
 
         def device_changed(self, device, propertyname, propertyvalue):
             if propertyname == "Scanning":
                 if propertyvalue:
-                    self.spnner_scanning.start()
+                    self.spinner_scanning.start()
                 else:
-                    self.spnner_scanning.stop()
+                    self.spinner_scanning.stop()
+                    device.unregister_propertychange_callback(self.device_changed)
                     self.check_status_icon()
 
         def attach_signals(self):
             self.status_icon.connect("popup-menu", self.build_right_menu)
             self.connman.register_propertychange_callback(self.manager_changed)
             self.verify_default_service()
-            for dev in self.connman.get_devices():
-                dev.register_propertychange_callback(self.device_changed)
