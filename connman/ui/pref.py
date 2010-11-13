@@ -65,7 +65,8 @@ class Preferences(object):
 
     def remove_service(self, button):
         service = self.get_selected_service()
-        service.remove()
+        if service:
+            service.remove()
         self.refresh()
 
     def attach_signals(self):

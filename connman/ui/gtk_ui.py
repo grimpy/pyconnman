@@ -1,10 +1,13 @@
 import gtk
 import gobject
+import logging
+import pynotify
+import dbus
+
 from connman import dbuswrapper
 from connman.ui import icons, pref
 from connman import paths
-import logging
-import pynotify
+
 
 class GtkUi(object):
         def __init__(self):
@@ -23,19 +26,20 @@ class GtkUi(object):
             self.password_messagebox = self.builder.get_object("msgPassword")
             self.attach_signals()
 
-        def service_update(self, service, propertyname, propertyvalue):
-            logging.info("Service property update of %s with value %s", propertyname, propertyvalue)
+        def service_changed(self, service, propertyname, propertyvalue):
             if propertyname == "Strength":
                 icon = icons.get_icon_by_strenght(propertyvalue)
                 self.status_icon.set_from_file(icon)
             elif propertyname == "State":
                 self.notify.update("Connman", "Sevice %s is now %s" % (service.name, propertyvalue))
                 self.notify.show()
+                if service.state in ("failure", "online", "ready"):
+                    self.spinner_connect.reset()
 
         def service_password_entered(self, dialog, response, service):
             if response == gtk.RESPONSE_OK:
                 service.passphrase = self.builder.get_object("txtPass").props.text
-                self.connect_service(service)
+                self.connect_service(service, True)
             dialog.hide()
 
 
@@ -56,7 +60,7 @@ class GtkUi(object):
             elif type_ == "ethernet":
                 icon = icons.TYPE_WIRED
             if icon != icons.TYPE_NONE:
-                self.spinner_connect.stop()
+                self.spinner_connect.reset()
             if service:
                 ipinfo = service.properties['IPv4']
                 tooltip = "Connected to %s\nAddress %s/%s\nGateway %s" % (service, ipinfo['Address'], ipinfo['Netmask'], ipinfo['Gateway'])
@@ -67,20 +71,31 @@ class GtkUi(object):
             group_item.set_active(True)
             self.connect_service(service)
 
-        def connect_service(self, service):
+
+        def service_connected(self):
+            logging.info("Service connected")
+            self.spinner_connect.reset()
+
+        def service_connect_failed(self, error):
+            if error._dbus_error_name != "org.moblin.connman.Error.InProgress":
+                logging.warn("Failed to connect %s", error)
+                self.notify.update("Connman", "Failed to connect")
+                self.notify.show()
+                self.spinner_connect.reset()
+                self.check_status_icon()
+
+        def connect_service(self, service, newpass=False):
             state = service.state
             if state not in ("online", "ready"):
                 self.spinner_connect.start()
-                try:
-                    if service.properties.get('PassphraseRequired', False) or state == "failure" and service.type == "wifi":
-                        self.password_messagebox.props.text = "Provide password for wireless network %s" % service.name
-                        self.builder.get_object("txtPass").props.text = ""
-                        self.password_messagebox.connect("response", self.service_password_entered, service)
-                        self.password_messagebox.show()
-                        return
-                    service.connect()
-                except Exception, e:
-                    return e
+                if service.properties.get('PassphraseRequired', False) or (state == "failure" and not newpass) and service.type == "wifi":
+                    self.password_messagebox.props.text = "Provide password for wireless network %s" % service.name
+                    self.builder.get_object("txtPass").props.text = ""
+                    self.password_messagebox.connect("response", self.service_password_entered, service)
+                    self.password_messagebox.show()
+                    return
+                logging.info("Connecting to service %s", service.name)
+                service.connect(reply_handler=self.service_connected, error_handler=self.service_connect_failed)
 
         def build_right_menu(self, icon, button ,timeout):
             menu = self.builder.get_object('tray_menu')
@@ -168,9 +183,9 @@ class GtkUi(object):
             default_service = self.connman.get_default_service()
             if self.default_service != default_service:
                 if default_service:
-                    default_service.register_propertychange_callback(self.service_update)
+                    default_service.register_propertychange_callback(self.service_changed)
                 if self.default_service:
-                    self.default_service.unregister_propertychange_callback(self.service_update)
+                    self.default_service.unregister_propertychange_callback(self.service_changed)
                 self.default_service = default_service
 
         def device_changed(self, device, propertyname, propertyvalue):

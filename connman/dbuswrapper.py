@@ -51,6 +51,13 @@ class DbusInt(object):
         if callback in self.__callbacks:
             self.__callbacks.remove(callback)
 
+    def __reload(self):
+        path = self.dbus.object_path
+        interface = self.dbus.dbus_interface
+        del self.dbus
+        self.dbus = dbus.Interface(self.bus.get_object("org.moblin.connman", path), interface)
+
+
     def __eq__(self, other):
         if isinstance(other, self.__class__):
             return self.dbus.object_path == other.dbus.object_path and \
@@ -78,8 +85,8 @@ class Service(DbusInt):
     ip4config = "IPv4.Configuration"
     dnsconfig = "Nameservers.Configuration"
 
-    def connect(self, timeout=60000):
-        self.dbus.Connect(timeout=timeout)
+    def connect(self, **kwargs):
+        self.dbus.Connect(**kwargs)
 
     def disconnect(self):
         self.dbus.Disconnect()
