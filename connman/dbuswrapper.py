@@ -5,8 +5,8 @@ import logging
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
+bus = dbus.SystemBus()
 class DbusInt(object):
-    bus = dbus.SystemBus()
     __instances = dict()
     _str_props = ("Name", "Type")
 
@@ -25,7 +25,7 @@ class DbusInt(object):
         name = self.__class__.__name__
         self.__callback_registered = False
         self.__callbacks = list()
-        self.dbus = dbus.Interface(self.bus.get_object("org.moblin.connman", path),
+        self.dbus = dbus.Interface(bus.get_object("org.moblin.connman", path),
                         "org.moblin.connman.%s" % name)
         if hasattr(self, '_exposed_properties'):
             for prop in self._exposed_properties:
