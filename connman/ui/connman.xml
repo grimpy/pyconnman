@@ -589,7 +589,7 @@
             <child type="tab">
               <object class="GtkLabel" id="label2">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Network Information</property>
+                <property name="label" translatable="yes">Wireless Information</property>
               </object>
               <packing>
                 <property name="position">1</property>

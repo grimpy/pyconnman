@@ -104,6 +104,7 @@ class Service(DbusInt):
 
     def enable_dhcp(self):
         self.dbus.SetProperty(self.ip4config, {"Method": "dhcp"})
+        self.dbus.SetProperty(self.dnsconfig, {"Method": "dhcp"})
 
 class Technology(DbusInt):
     _str_props = ("Name", )
