@@ -8,6 +8,7 @@ DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus()
 class DbusInt(object):
     __instances = dict()
+    _exposed_properties = tuple()
     _str_props = ("Name", "Type")
 
     @classmethod
@@ -27,14 +28,13 @@ class DbusInt(object):
         self.__callbacks = list()
         self.dbus = dbus.Interface(bus.get_object("org.moblin.connman", path),
                         "org.moblin.connman.%s" % name)
-        if hasattr(self, '_exposed_properties'):
-            for prop in self._exposed_properties:
-                def mysetter(name, s, value):
-                    s.dbus.SetProperty(name, value)
-                def mygetter(name, s):
-                    return s.properties.get(name)
-                myprop = property(fget=functools.partial(mygetter, prop), fset=functools.partial(mysetter, prop))
-                setattr(self.__class__, prop.lower(), myprop)
+        for prop in self._exposed_properties:
+            def mysetter(name, this, value):
+                this.dbus.SetProperty(name, value)
+            def mygetter(name, this):
+                return this.properties.get(name)
+            myprop = property(fget=functools.partial(mygetter, prop), fset=functools.partial(mysetter, prop))
+            setattr(self.__class__, prop.lower(), myprop)
 
     def __callback_handler(self, propertyname, propertyvalue):
         logging.info("%s property update of %s with value %s", self.__class__.__name__, propertyname, propertyvalue)
@@ -55,7 +55,7 @@ class DbusInt(object):
         path = self.dbus.object_path
         interface = self.dbus.dbus_interface
         del self.dbus
-        self.dbus = dbus.Interface(self.bus.get_object("org.moblin.connman", path), interface)
+        self.dbus = dbus.Interface(bus.get_object("org.moblin.connman", path), interface)
 
 
     def __eq__(self, other):
@@ -166,7 +166,7 @@ class Manager(DbusInt):
         return services
 
     services = property(fget=lambda s: [ Service.load(serv) for serv in s.properties['Services']])
-    technologies = property(fget=lambda s: [ Technology.load(tech,s) for tech in s.properties['Technologies']])
+    technologies = property(fget=lambda s: [ Technology.load(tech, s) for tech in s.properties['Technologies']])
 
 if __name__ == '__main__':
     con = Manager.load()
