@@ -2,7 +2,6 @@ import gtk
 import gobject
 import logging
 import pynotify
-import dbus
 
 from connman import dbuswrapper
 from connman.ui import icons, pref
@@ -90,14 +89,14 @@ class GtkUi(object):
             self.spinner_connect.start()
             if service.properties.get('PassphraseRequired', False) or (state == "failure" and not newpass) and service.type == "wifi":
                 self.password_messagebox.props.text = "Provide password for wireless network %s" % service.name
-                self.builder.get_object("txtPass").props.text = ""
+                self.builder.get_object("txtPass").props.text = service.passphrase
                 self.password_messagebox.connect("response", self.service_password_entered, service)
                 self.password_messagebox.show()
                 return
             logging.info("Connecting to service %s", service.name)
             service.connect(reply_handler=self.service_connected, error_handler=self.service_connect_failed)
 
-    def build_right_menu(self, icon, button ,timeout):
+    def build_right_menu(self, icon, button, timeout):
         menu = self.builder.get_object('tray_menu')
         for child in menu.get_children()[::-1]:
             menu.remove(child)
@@ -118,7 +117,6 @@ class GtkUi(object):
                     item.set_active(True)
                 item.connect("toggled", self.service_connect, service)
                 item.show()
-                lastitme = item
                 menu.append(item)
             sep = gtk.SeparatorMenuItem()
             sep.show()

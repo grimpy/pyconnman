@@ -5,8 +5,8 @@ import logging
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 
-bus = dbus.SystemBus()
 class DbusInt(object):
+    __bus = dbus.SystemBus()
     __instances = dict()
     _exposed_properties = tuple()
     _str_props = ("Name", "Type")
@@ -26,7 +26,7 @@ class DbusInt(object):
         name = self.__class__.__name__
         self.__callback_registered = False
         self.__callbacks = list()
-        self.dbus = dbus.Interface(bus.get_object("org.moblin.connman", path),
+        self.dbus = dbus.Interface(self.__bus.get_object("org.moblin.connman", path),
                         "org.moblin.connman.%s" % name)
         for prop in self._exposed_properties:
             def mysetter(name, this, value):
@@ -55,7 +55,7 @@ class DbusInt(object):
         path = self.dbus.object_path
         interface = self.dbus.dbus_interface
         del self.dbus
-        self.dbus = dbus.Interface(bus.get_object("org.moblin.connman", path), interface)
+        self.dbus = dbus.Interface(self.__bus.get_object("org.moblin.connman", path), interface)
 
 
     def __eq__(self, other):
@@ -95,10 +95,10 @@ class Service(DbusInt):
         self.dbus.Remove()
 
     def set_ipaddress(self, address, netmask, gateway, nameservers):
-        ip = {'Method': 'manual', 'Address': address, 'Netmask': netmask}
+        ip_address = {'Method': 'manual', 'Address': address, 'Netmask': netmask}
         if gateway:
-            ip['Gateway'] = gateway
-        self.dbus.SetProperty(self.ip4config, ip)
+            ip_address['Gateway'] = gateway
+        self.dbus.SetProperty(self.ip4config, ip_address)
         if nameservers:
             self.dbus.SetProperty(self.dnsconfig, nameservers)
 
