@@ -4,6 +4,7 @@ import functools
 import logging
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
+DBUS_DOMAIN = "net.connman"
 
 class DbusInt(object):
     __bus = dbus.SystemBus()
@@ -26,8 +27,8 @@ class DbusInt(object):
         name = self.__class__.__name__
         self.__callback_registered = False
         self.__callbacks = list()
-        self.dbus = dbus.Interface(self.__bus.get_object("org.moblin.connman", path),
-                        "org.moblin.connman.%s" % name)
+        self.dbus = dbus.Interface(self.__bus.get_object(DBUS_DOMAIN, path),
+                        "%s.%s" % (DBUS_DOMAIN, name))
         for prop in self._exposed_properties:
             def mysetter(name, this, value):
                 this.dbus.SetProperty(name, value)
@@ -55,7 +56,7 @@ class DbusInt(object):
         path = self.dbus.object_path
         interface = self.dbus.dbus_interface
         del self.dbus
-        self.dbus = dbus.Interface(self.__bus.get_object("org.moblin.connman", path), interface)
+        self.dbus = dbus.Interface(self.__bus.get_object(DBUS_DOMAIN, path), interface)
 
 
     def __eq__(self, other):
@@ -127,8 +128,6 @@ class Technology(DbusInt):
     enabled = property(fget=lambda s: s.properties['State'] == 'enabled',
                     fset=__set_enabled)
 
-class Device(DbusInt):
-    _exposed_properties = ("Powered", )
 
 class Manager(DbusInt):
     _exposed_properties = ('State',)
@@ -136,16 +135,8 @@ class Manager(DbusInt):
     def __init__(self):
         super(Manager, self).__init__("/")
 
-    def get_devices(self):
-        devices = list()
-        for tech in self.technologies:
-            for dev in tech.devices:
-                devices.append(dev)
-        return devices
-
     def scan(self, type_=""):
         self.dbus.RequestScan(type_)
-
 
     def get_default_service(self):
         defaulttechtype = self.properties['DefaultTechnology']
