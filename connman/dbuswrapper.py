@@ -5,6 +5,7 @@ import logging
 from dbus.mainloop.glib import DBusGMainLoop
 DBusGMainLoop(set_as_default=True)
 DBUS_DOMAIN = "net.connman"
+#DBUS_DOMAIN = "org.moblin.connman"
 
 class DbusInt(object):
     __bus = dbus.SystemBus()
@@ -95,6 +96,10 @@ class Service(DbusInt):
     def remove(self):
         self.dbus.Remove()
 
+    def refresh_ipaddress(self):
+        config = dict((str(x), str(y)) for x,y in self.properties[self.ip4config].iteritems())
+        self.dbus.SetProperty(self.ip4config, config)
+
     def set_ipaddress(self, address, netmask, gateway, nameservers):
         ip_address = {'Method': 'manual', 'Address': address, 'Netmask': netmask}
         if gateway:
@@ -146,6 +151,11 @@ class Manager(DbusInt):
         for service in services:
             if service.properties['State'] in ("online", "ready"):
                 return service
+
+    def refresh_ipaddress(self, *args, **kwargs):
+        service = self.get_default_service()
+        if service:
+            service.refresh_ipaddress()
 
     def get_services_by_type(self):
         services = dict()

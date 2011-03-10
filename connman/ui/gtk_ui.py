@@ -151,16 +151,25 @@ class GtkUi(object):
         menu.append(mainitem)
 
     def append_default_menu(self, menu):
+        #Refresh IP
+        scan = gtk.ImageMenuItem(gtk.STOCK_EXECUTE)
+        scan.set_label("Renew IP Address")
+        scan.connect("activate", self.connman.refresh_ipaddress)
+        scan.show()
+        menu.append(scan)
+        #Scan
         scan = gtk.ImageMenuItem(gtk.STOCK_REFRESH)
         scan.set_label("Scan")
         scan.connect("activate", self.scan)
         scan.show()
         menu.append(scan)
+        #Configure
         pref = gtk.ImageMenuItem(gtk.STOCK_PREFERENCES)
         pref.set_label("Configure")
         pref.connect("activate", self.pref.show)
         pref.show()
         menu.append(pref)
+        #Quit
         quit_item = gtk.ImageMenuItem(gtk.STOCK_QUIT)
         quit_item.connect("activate", self.quit)
         quit_item.show()
